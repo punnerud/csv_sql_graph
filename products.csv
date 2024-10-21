@@ -1,0 +1,11 @@
+product_id,product_name,category,price,stock_quantity
+1,Laptop,Electronics,999.99,50
+2,Smartphone,Electronics,599.99,100
+3,Tablet,Electronics,299.99,75
+4,Headphones,Electronics,149.99,200
+5,Coffee Maker,Home Appliances,79.99,30
+6,Blender,Home Appliances,49.99,40
+7,Toaster,Home Appliances,29.99,60
+8,Running Shoes,Sports,89.99,80
+9,Yoga Mat,Sports,19.99,150
+10,Dumbbell Set,Sports,129.99,25

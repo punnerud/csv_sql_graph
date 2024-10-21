@@ -1,0 +1,11 @@
+customer_id,first_name,last_name,email,country
+1,John,Doe,john.doe@email.com,USA
+2,Jane,Smith,jane.smith@email.com,Canada
+3,Alice,Johnson,alice.johnson@email.com,UK
+4,Bob,Brown,bob.brown@email.com,Australia
+5,Emma,Wilson,emma.wilson@email.com,USA
+6,Michael,Lee,michael.lee@email.com,Canada
+7,Olivia,Taylor,olivia.taylor@email.com,UK
+8,David,Martinez,david.martinez@email.com,USA
+9,Sophia,Anderson,sophia.anderson@email.com,Australia
+10,William,Garcia,william.garcia@email.com,Canada

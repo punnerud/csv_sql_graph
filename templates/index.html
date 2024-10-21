@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Upload and Query</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;  /* Increased from 800px */
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        #query-result {
+            margin-top: 20px;
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .table-info {
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .table-name {
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .table-columns {
+            margin-top: 5px;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .preview-button {
+            margin-left: 10px;
+            padding: 2px 5px;
+            font-size: 0.8em;
+        }
+        .view-suggestion {
+            display: flex;
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+            height: 400px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .view-details {
+            width: 50%;
+            padding-right: 10px;
+            overflow: auto;
+            box-sizing: border-box;
+        }
+        .view-result {
+            width: 50%;
+            overflow: auto;
+            box-sizing: border-box;
+        }
+        .view-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .view-sql {
+            font-family: monospace;
+            white-space: pre-wrap;
+            background-color: #f8f8f8;
+            padding: 10px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            max-height: 150px;  /* Reduced from 200px */
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            width: 100%;
+            box-sizing: border-box;
+            resize: vertical;
+            min-height: 100px;
+        }
+        .view-buttons {
+            margin-top: 10px;
+        }
+        .copy-view-button {
+            margin-top: 5px;
+        }
+        .view-checkbox {
+            margin-right: 5px;
+        }
+        #combine-views-button {
+            margin-top: 10px;
+        }
+        #link-selection {
+            margin-top: 10px;
+        }
+        #query-section {
+            margin-bottom: 300px;
+        }
+        .ui-resizable-helper {
+            border: 2px dotted #00F;
+        }
+        .graph-container {
+            width: 100%;
+            height: 250px;  /* Increased from 150px */
+            border: 1px solid #ddd;
+            margin-top: 10px;
+            overflow: visible;
+        }
+        .node {
+            fill: #69b3a2;
+        }
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.6;
+        }
+        .node-label {
+            font-size: 12px;
+            text-anchor: middle;
+        }
+        .link-label {
+            font-size: 10px;
+            text-anchor: middle;
+        }
+        #combined-graph-container {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        #combined-graph-container .node {
+            fill: #4CAF50;
+            stroke: #45a049;
+            stroke-width: 2px;
+        }
+        #combined-graph-container .link {
+            stroke: #999;
+            stroke-opacity: 0.6;
+            stroke-width: 2px;
+        }
+        #combined-graph-container .node-label {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        #combined-graph-container .link-label {
+            font-size: 10px;
+            fill: #666;
+        }
+        #combined-graph-container .node.selected {
+            fill: #ff7f0e;
+            stroke: #ff6f00;
+        }
+        .delete-button {
+            margin-left: 10px;
+            padding: 2px 5px;
+            font-size: 0.8em;
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .delete-button:hover {
+            background-color: #ff1a1a;
+        }
+    </style>
+</head>
+<body>
+    <h1>CSV Upload and Query</h1>
+    
+    <h2>Upload CSV</h2>
+    <form id="upload-form">
+        <input type="file" id="csv-file" accept=".csv" required>
+        <button type="submit">Upload</button>
+    </form>
+    
+    <h3>Example CSV Files</h3>
+    <ul>
+        <li><a href="/example/customers.csv" download>Download Customers CSV</a></li>
+        <li><a href="/example/products.csv" download>Download Products CSV</a></li>
+        <li><a href="/example/orders.csv" download>Download Orders CSV</a></li>
+        <li><a href="/example/order_details.csv" download>Download Order Details CSV</a></li>
+    </ul>
+    
+    <h2>Available Tables</h2>
+    <div id="table-list"></div>
+    
+    <h2>Schema Analysis</h2>
+    <button id="analyze-schema">Analyze Schema and Suggest Views</button>
+    <div id="suggested-views"></div>
+    <button id="combine-views-button" style="display: none;">Combine Selected Views (click on the graph nodes first)</button>
+    <div id="combined-graph-container" style="width: 100%; height: 300px; margin-top: 20px;"></div>
+    <div id="link-selection"></div>
+
+    <div id="query-section">
+        <h2>Run Query</h2>
+        <textarea id="query-input" rows="6" cols="80" placeholder="Enter your SQL query here"></textarea>
+        <button id="run-query">Run Query</button>
+    </div>
+    
+    <div id="query-result"></div>
+
+    <script>
+        $(document).ready(function() {
+            // Upload CSV
+            $('#upload-form').submit(function(e) {
+                e.preventDefault();
+                var formData = new FormData();
+                formData.append('file', $('#csv-file')[0].files[0]);
+                
+                $.ajax({
+                    url: '/upload',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        alert(response.message || response.error);
+                        loadTables();
+                    }
+                });
+            });
+
+            // Load tables
+            function loadTables() {
+                $.get('/tables', function(items) {
+                    $('#table-list').empty();
+                    items.forEach(function(item) {
+                        var itemInfo = $('<div class="table-info"></div>');
+                        var itemName = $('<span class="table-name"></span>').text(item.name + (item.type === 'view' ? ' (View)' : ''));
+                        var previewButton = $('<button class="preview-button">Preview</button>');
+                        var deleteButton = $('<button class="delete-button">Delete</button>');
+                        var columns = $('<div class="table-columns"></div>').text('Columns: ' + item.columns.join(', '));
+                        
+                        itemInfo.append(itemName, previewButton, deleteButton, columns);
+                        $('#table-list').append(itemInfo);
+
+                        previewButton.click(function() {
+                            previewTable(item.name);
+                        });
+
+                        deleteButton.click(function() {
+                            confirmDelete(item.name, item.type);
+                        });
+                    });
+                });
+            }
+
+            function previewTable(tableName) {
+                var query = `SELECT * FROM ${tableName} LIMIT 100;`;
+                $('#query-input').val(query);
+                $('#run-query').click();
+            }
+
+            loadTables();
+
+            // Analyze schema and suggest views
+            $('#analyze-schema').click(function() {
+                $.get('/analyze_schema', function(response) {
+                    var suggestedViews = response.suggested_views;
+                    databaseGraph = response.database_graph;  // Store databaseGraph globally
+                    var viewsHtml = '<h3>Suggested Views:</h3>';
+                    suggestedViews.forEach(function(view, index) {
+                        viewsHtml += '<div class="view-suggestion" data-index="' + index + '">';
+                        viewsHtml += '<div class="view-details">';
+                        viewsHtml += '<input type="checkbox" class="view-checkbox" value="' + view[0] + '" checked>'; // Set checked by default
+                        viewsHtml += '<div class="view-name">' + view[0] + '</div>';
+                        viewsHtml += '<textarea class="view-sql" rows="4">' + view[1] + '</textarea>';  // Reduced rows
+                        viewsHtml += '<div class="view-buttons">';
+                        viewsHtml += '<button class="copy-view-button">Copy to Query</button>';
+                        viewsHtml += '<button class="execute-view-button" data-index="' + index + '">Execute View</button>';
+                        viewsHtml += '</div>';
+                        viewsHtml += '<div class="graph-container" id="graph-' + index + '"></div>';
+                        viewsHtml += '</div>';
+                        viewsHtml += '<div class="view-result" id="view-result-' + index + '"></div>';
+                        viewsHtml += '</div>';
+                    });
+                    $('#suggested-views').html(viewsHtml);
+                    $('#combine-views-button').show();
+
+                    // Set initial fixed width for view-details and view-result
+                    $('.view-details').width('50%');
+                    $('.view-result').width('50%');
+
+                    // Make view suggestions resizable
+                    $('.view-suggestion').resizable({
+                        handles: 'e',
+                        minWidth: 600,
+                        resize: function(event, ui) {
+                            var $this = $(this);
+                            var $viewDetails = $this.find('.view-details');
+                            var $viewResult = $this.find('.view-result');
+                            
+                            // Keep view-details width fixed and only resize view-result
+                            var detailsWidth = $viewDetails.width();
+                            var newResultWidth = ui.size.width - detailsWidth - 20; // 20px for padding
+                            $viewResult.width(newResultWidth);
+                            
+                            // Adjust the width of all other view suggestions
+                            $('.view-suggestion').not(this).each(function() {
+                                var $otherViewSuggestion = $(this);
+                                var $otherViewResult = $otherViewSuggestion.find('.view-result');
+                                $otherViewSuggestion.width(ui.size.width);
+                                $otherViewResult.width(newResultWidth);
+                            });
+                        }
+                    });
+
+                    // Make view-sql textareas resizable vertically
+                    $('.view-sql').resizable({
+                        handles: 's',
+                        minHeight: 100,
+                        maxHeight: 300,  // Limit the maximum height
+                        resize: function(event, ui) {
+                            // Don't adjust other textareas
+                        }
+                    });
+
+                    // Add click event for copy buttons
+                    $('.copy-view-button').click(function() {
+                        var sql = $(this).closest('.view-details').find('.view-sql').val();
+                        $('#query-input').val(sql);
+                    });
+
+                    // Add click event for execute buttons
+                    $('.execute-view-button').click(function() {
+                        var index = $(this).data('index');
+                        var sql = $(this).closest('.view-details').find('.view-sql').val();
+                        executeView(sql, index);
+                    });
+
+                    // Create graph visualizations
+                    suggestedViews.forEach(function(view, index) {
+                        createGraphVisualization(view, index, databaseGraph);
+                    });
+
+                    // Automatically execute all views
+                    suggestedViews.forEach(function(view, index) {
+                        executeView(view[1], index);
+                    });
+
+                    // Add click event for checkboxes
+                    $('.view-checkbox').click(function() {
+                        updateCombinedGraph();
+                    });
+
+                    // Generate combined graph immediately
+                    updateCombinedGraph();
+                });
+            });
+
+            var graphSimulations = {};
+
+            function createGraphVisualization(view, index, databaseGraph) {
+                var viewName = view[0];
+                var viewSql = view[1];
+                var tables = extractTablesFromSql(viewSql);
+                
+                var nodes = [];
+                var links = [];
+                var addedNodes = new Set();
+
+                for (var i = 0; i < tables.length - 1; i++) {
+                    for (var j = i + 1; j < tables.length; j++) {
+                        var table1 = tables[i];
+                        var table2 = tables[j];
+                        if (databaseGraph[table1] && databaseGraph[table1][table2]) {
+                            if (!addedNodes.has(table1)) {
+                                nodes.push({id: table1});
+                                addedNodes.add(table1);
+                            }
+                            if (!addedNodes.has(table2)) {
+                                nodes.push({id: table2});
+                                addedNodes.add(table2);
+                            }
+                            links.push({
+                                source: table1,
+                                target: table2,
+                                label: databaseGraph[table1][table2].join(', ')
+                            });
+                        } else if (databaseGraph[table2] && databaseGraph[table2][table1]) {
+                            if (!addedNodes.has(table1)) {
+                                nodes.push({id: table1});
+                                addedNodes.add(table1);
+                            }
+                            if (!addedNodes.has(table2)) {
+                                nodes.push({id: table2});
+                                addedNodes.add(table2);
+                            }
+                            links.push({
+                                source: table2,
+                                target: table1,
+                                label: databaseGraph[table2][table1].join(', ')
+                            });
+                        }
+                    }
+                }
+
+                if (nodes.length === 0) {
+                    // If no connections found, just add all tables as disconnected nodes
+                    nodes = tables.map(table => ({id: table}));
+                }
+
+                var width = 400;
+                var height = 200;
+
+                var svg = d3.select('#graph-' + index)
+                    .append('svg')
+                    .attr('width', '100%')
+                    .attr('height', '100%')
+                    .attr('viewBox', [0, 0, width, height]);
+
+                var simulation = d3.forceSimulation(nodes)
+                    .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+                    .force('charge', d3.forceManyBody().strength(-200))
+                    .force('center', d3.forceCenter(width / 2, height / 2));
+
+                graphSimulations[index] = simulation;
+
+                var link = svg.append('g')
+                    .selectAll('line')
+                    .data(links)
+                    .enter().append('line')
+                    .attr('class', 'link');
+
+                var node = svg.append('g')
+                    .selectAll('circle')
+                    .data(nodes)
+                    .enter().append('circle')
+                    .attr('class', 'node')
+                    .attr('r', 8);
+
+                var nodeLabel = svg.append('g')
+                    .selectAll('text')
+                    .data(nodes)
+                    .enter().append('text')
+                    .attr('class', 'node-label')
+                    .text(d => d.id)
+                    .attr('font-size', 14);
+
+                var linkLabel = svg.append('g')
+                    .selectAll('text')
+                    .data(links)
+                    .enter().append('text')
+                    .attr('class', 'link-label')
+                    .text(d => d.label)
+                    .attr('font-size', 12);
+
+                simulation.on('tick', function() {
+                    link
+                        .attr('x1', d => d.source.x)
+                        .attr('y1', d => d.source.y)
+                        .attr('x2', d => d.target.x)
+                        .attr('y2', d => d.target.y);
+
+                    node
+                        .attr('cx', d => d.x)
+                        .attr('cy', d => d.y);
+
+                    nodeLabel
+                        .attr('x', d => d.x)
+                        .attr('y', d => d.y - 10);
+
+                    linkLabel
+                        .attr('x', d => (d.source.x + d.target.x) / 2)
+                        .attr('y', d => (d.source.y + d.target.y) / 2);
+                });
+            }
+
+            function extractTablesFromSql(sql) {
+                var fromIndex = sql.toUpperCase().indexOf('FROM');
+                var whereIndex = sql.toUpperCase().indexOf('WHERE');
+                var tablesPart = whereIndex !== -1 ? sql.slice(fromIndex, whereIndex) : sql.slice(fromIndex);
+                var tablesArray = tablesPart.split(/[\s,]+/)
+                    .filter(word => 
+                        word.toUpperCase() !== 'FROM' && 
+                        word.toUpperCase() !== 'JOIN' && 
+                        word.toUpperCase() !== 'ON' &&
+                        word !== '='
+                    );
+                return [...new Set(tablesArray)]; // Remove duplicates
+            }
+
+            function executeView(sql, index) {
+                $.ajax({
+                    url: '/execute_view',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({query: sql}),
+                    success: function(response) {
+                        if (response.error) {
+                            $('#view-result-' + index).html('<p>Error: ' + response.error + '</p>');
+                        } else {
+                            var table = '<table><tr>';
+                            response.columns.forEach(function(column) {
+                                table += '<th>' + column + '</th>';
+                            });
+                            response.data.forEach(function(row) {
+                                table += '<tr>';
+                                row.forEach(function(cell) {
+                                    table += '<td>' + cell + '</td>';
+                                });
+                                table += '</tr>';
+                            });
+                            table += '</table>';
+                            $('#view-result-' + index).html(table);
+                            
+                            // Center the graph after the table is rendered
+                            centerGraph(index);
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        $('#view-result-' + index).html('<p>Error: ' + textStatus + ' - ' + errorThrown + '</p>');
+                        console.error('AJAX Error:', jqXHR.responseText);
+                    }
+                });
+            }
+
+            // Combine selected views
+            $('#combine-views-button').click(function() {
+                var selectedNode = d3.select('#combined-graph-container .node.selected').data()[0];
+                if (selectedNode) {
+                    generateCombinedView(selectedNode.id);
+                } else {
+                    alert('Please select an end node in the graph visualization.');
+                }
+            });
+
+            function generateCombinedView(endNodeId) {
+                var visited = new Set();
+                var joinSequence = [];
+                var currentNode = endNodeId;
+
+                while (true) {
+                    visited.add(currentNode);
+                    joinSequence.unshift(currentNode);
+
+                    var neighbors = combinedGraphData.links
+                        .filter(l => (l.source.id === currentNode && !visited.has(l.target.id)) || 
+                                     (l.target.id === currentNode && !visited.has(l.source.id)))
+                        .map(l => l.source.id === currentNode ? l.target : l.source);
+
+                    if (neighbors.length === 0) break;
+                    currentNode = neighbors[0].id;
+                }
+
+                var sql = 'SELECT *\n';
+                sql += 'FROM ' + joinSequence[0] + '\n';
+
+                for (var i = 1; i < joinSequence.length; i++) {
+                    var table1 = joinSequence[i-1];
+                    var table2 = joinSequence[i];
+                    var link = combinedGraphData.links.find(l => 
+                        (l.source.id === table1 && l.target.id === table2) || 
+                        (l.source.id === table2 && l.target.id === table1)
+                    );
+                    sql += 'LEFT JOIN ' + table2 + ' ON ' + table1 + '.' + link.label + ' = ' + table2 + '.' + link.label + '\n';
+                }
+
+                sql += 'LIMIT 100';
+
+                $('#query-input').val('CREATE VIEW combined_view AS\n' + sql);
+
+                // Execute the query and display results
+                executeQuery(sql);
+            }
+
+            function executeQuery(sql) {
+                $.ajax({
+                    url: '/query',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({query: sql}),
+                    success: function(response) {
+                        if (response.error) {
+                            $('#query-result').html('<p>Error: ' + response.error + '</p>');
+                        } else {
+                            var table = '<h3>Combined View Preview:</h3><table><tr>';
+                            response.columns.forEach(function(column) {
+                                table += '<th>' + column + '</th>';
+                            });
+                            table += '</tr>';
+                            response.data.forEach(function(row) {
+                                table += '<tr>';
+                                row.forEach(function(cell) {
+                                    table += '<td>' + cell + '</td>';
+                                });
+                                table += '</tr>';
+                            });
+                            table += '</table>';
+                            $('#query-result').html(table);
+                            
+                            // Scroll to the query result
+                            $('html, body').animate({
+                                scrollTop: $('#query-result').offset().top
+                            }, 500);
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        $('#query-result').html('<p>Error: ' + textStatus + ' - ' + errorThrown + '</p>');
+                        console.error('AJAX Error:', jqXHR.responseText);
+                    }
+                });
+            }
+
+            // Run query
+            $('#run-query').click(function() {
+                var query = $('#query-input').val();
+                $.ajax({
+                    url: '/query',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({query: query}),
+                    success: function(response) {
+                        if (response.error) {
+                            $('#query-result').html('<p>Error: ' + response.error + '</p>');
+                        } else if (response.columns.length === 0) {
+                            $('#query-result').html('<p>Query executed successfully. No results to display.</p>');
+                        } else {
+                            var table = '<table><tr>';
+                            response.columns.forEach(function(column) {
+                                table += '<th>' + column + '</th>';
+                            });
+                            table += '</tr>';
+                            response.data.forEach(function(row) {
+                                table += '<tr>';
+                                row.forEach(function(cell) {
+                                    table += '<td>' + cell + '</td>';
+                                });
+                                table += '</tr>';
+                            });
+                            table += '</table>';
+                            $('#query-result').html(table);
+                        }
+                        
+                        // Scroll to the query result
+                        $('html, body').animate({
+                            scrollTop: $('#query-result').offset().top
+                        }, 500);
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        $('#query-result').html('<p>Error: ' + textStatus + ' - ' + errorThrown + '</p>');
+                        console.error('AJAX Error:', jqXHR.responseText);
+                    }
+                });
+            });
+
+            function centerGraph(index) {
+                var svg = d3.select('#graph-' + index + ' svg');
+                var bounds = svg.node().getBBox();
+                var parent = svg.node().parentElement;
+                var width = parent.clientWidth;
+                var height = parent.clientHeight;
+                var fullWidth = bounds.width;
+                var fullHeight = bounds.height;
+                var scale = 0.9 / Math.max(fullWidth / width, fullHeight / height);  // Adjusted scale factor
+                var translate = [width / 2 - scale * (bounds.x + fullWidth / 2), height / 2 - scale * (bounds.y + fullHeight / 2)];
+
+                svg.transition()
+                    .duration(750)
+                    .call(
+                        d3.zoom().transform,
+                        d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale)
+                    );
+
+                // Update the simulation center force
+                if (graphSimulations[index]) {
+                    graphSimulations[index]
+                        .force('center', d3.forceCenter(width / 2, height / 2))
+                        .alpha(0.3)
+                        .restart();
+                }
+            }
+
+            var combinedGraphSimulation;
+
+            var combinedGraphData = { nodes: [], links: [] };
+
+            function updateCombinedGraph() {
+                var selectedViews = $('.view-checkbox:checked').map(function() {
+                    return $(this).val();
+                }).get();
+
+                var nodes = new Set();
+                var links = [];
+                var addedLinks = new Set();
+
+                selectedViews.forEach(function(viewName) {
+                    var viewSql = $('textarea.view-sql').filter(function() {
+                        return $(this).closest('.view-suggestion').find('.view-checkbox').val() === viewName;
+                    }).val();
+                    var tables = extractTablesFromSql(viewSql);
+
+                    tables.forEach(table => nodes.add(table));
+
+                    for (var i = 0; i < tables.length - 1; i++) {
+                        for (var j = i + 1; j < tables.length; j++) {
+                            var table1 = tables[i];
+                            var table2 = tables[j];
+                            var linkKey = [table1, table2].sort().join('-');
+                            
+                            if (!addedLinks.has(linkKey)) {
+                                if (databaseGraph[table1] && databaseGraph[table1][table2]) {
+                                    links.push({
+                                        source: table1,
+                                        target: table2,
+                                        label: databaseGraph[table1][table2].join(', ')
+                                    });
+                                    addedLinks.add(linkKey);
+                                } else if (databaseGraph[table2] && databaseGraph[table2][table1]) {
+                                    links.push({
+                                        source: table2,
+                                        target: table1,
+                                        label: databaseGraph[table2][table1].join(', ')
+                                    });
+                                    addedLinks.add(linkKey);
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Find the largest connected component
+                var connectedComponents = findConnectedComponents(nodes, links);
+                var largestComponent = connectedComponents.reduce((max, component) => component.size > max.size ? component : max, new Set());
+
+                // Filter nodes and links to keep only the largest component
+                nodes = Array.from(largestComponent).map(id => ({id: id}));
+                links = links.filter(link => largestComponent.has(link.source) && largestComponent.has(link.target));
+
+                combinedGraphData.nodes = nodes;
+                combinedGraphData.links = links;
+
+                // Clear existing graph
+                d3.select('#combined-graph-container').selectAll('*').remove();
+
+                var width = $('#combined-graph-container').width();
+                var height = $('#combined-graph-container').height();
+
+                var svg = d3.select('#combined-graph-container')
+                    .append('svg')
+                    .attr('width', width)
+                    .attr('height', height);
+
+                combinedGraphSimulation = d3.forceSimulation(nodes)
+                    .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+                    .force('charge', d3.forceManyBody().strength(-300))
+                    .force('center', d3.forceCenter(width / 2, height / 2));
+
+                var link = svg.append('g')
+                    .selectAll('line')
+                    .data(links)
+                    .enter().append('line')
+                    .attr('class', 'link');
+
+                var node = svg.append('g')
+                    .selectAll('circle')
+                    .data(nodes)
+                    .enter().append('circle')
+                    .attr('class', 'node')
+                    .attr('r', 8)
+                    .on('click', function(event, d) {
+                        node.classed('selected', false);
+                        d3.select(this).classed('selected', true);
+                        updateCombineViewButton();
+                    });
+
+                var nodeLabel = svg.append('g')
+                    .selectAll('text')
+                    .data(nodes)
+                    .enter().append('text')
+                    .attr('class', 'node-label')
+                    .text(d => d.id)
+                    .attr('font-size', 14);
+
+                var linkLabel = svg.append('g')
+                    .selectAll('text')
+                    .data(links)
+                    .enter().append('text')
+                    .attr('class', 'link-label')
+                    .text(d => d.label)
+                    .attr('font-size', 12);
+
+                combinedGraphSimulation.on('tick', function() {
+                    link
+                        .attr('x1', d => d.source.x)
+                        .attr('y1', d => d.source.y)
+                        .attr('x2', d => d.target.x)
+                        .attr('y2', d => d.target.y);
+
+                    node
+                        .attr('cx', d => d.x)
+                        .attr('cy', d => d.y);
+
+                    nodeLabel
+                        .attr('x', d => d.x)
+                        .attr('y', d => d.y - 10);
+
+                    linkLabel
+                        .attr('x', d => (d.source.x + d.target.x) / 2)
+                        .attr('y', d => (d.source.y + d.target.y) / 2);
+                });
+
+                // After creating the combined graph, select the first node
+                if (nodes.length > 0) {
+                    d3.select('#combined-graph-container .node').classed('selected', true);
+                    updateCombineViewButton();
+                }
+            }
+
+            function findConnectedComponents(nodes, links) {
+                var adjacencyList = {};
+                nodes.forEach(node => {
+                    adjacencyList[node] = new Set();
+                });
+                links.forEach(link => {
+                    adjacencyList[link.source].add(link.target);
+                    adjacencyList[link.target].add(link.source);
+                });
+
+                var visited = new Set();
+                var components = [];
+
+                function dfs(node, component) {
+                    visited.add(node);
+                    component.add(node);
+                    adjacencyList[node].forEach(neighbor => {
+                        if (!visited.has(neighbor)) {
+                            dfs(neighbor, component);
+                        }
+                    });
+                }
+
+                nodes.forEach(node => {
+                    if (!visited.has(node)) {
+                        var component = new Set();
+                        dfs(node, component);
+                        components.push(component);
+                    }
+                });
+
+                return components;
+            }
+
+            function updateCombineViewButton() {
+                var selectedNode = d3.select('#combined-graph-container .node.selected').data()[0];
+                var combineButton = $('#combine-views-button');
+                if (selectedNode) {
+                    var degree = combinedGraphData.links.filter(l => 
+                        (l.source.id === selectedNode.id) || (l.target.id === selectedNode.id)
+                    ).length;
+                    combineButton.text('Combine Views (End: ' + selectedNode.id + ')').prop('disabled', false);
+                } else {
+                    combineButton.text('Select an end node to combine views').prop('disabled', true);
+                }
+            }
+
+            function confirmDelete(name, type) {
+                if (confirm(`Are you sure you want to delete this ${type}: ${name}?`)) {
+                    deleteTableOrView(name, type);
+                }
+            }
+
+            function deleteTableOrView(name, type) {
+                $.ajax({
+                    url: '/delete_table_or_view',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({name: name, type: type}),
+                    success: function(response) {
+                        if (response.error) {
+                            alert('Error: ' + response.error);
+                        } else {
+                            alert(response.message);
+                            loadTables();  // Refresh the table list
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        alert('Error: ' + textStatus + ' - ' + errorThrown);
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

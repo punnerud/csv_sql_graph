@@ -1,6 +1,6 @@
 # CSV SQL Graph
 
-![CSV SQL Graph Demo](video.gif)
+![CSV SQL Graph Demo](https://github.com/punnerud/csv_sql_graph/raw/main/video.gif)
 
 CSV SQL Graph is a web application that allows users to upload CSV files, convert them into SQLite tables, visualize table relationships, and perform SQL queries. It provides an intuitive interface for data analysis and exploration.
 
@@ -17,7 +17,7 @@ CSV SQL Graph is a web application that allows users to upload CSV files, conver
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/csv_sql_graph.git
+   git clone https://github.com/punnerud/csv_sql_graph.git
    cd csv_sql_graph
    ```
 
@@ -72,10 +72,10 @@ CSV SQL Graph is a web application that allows users to upload CSV files, conver
 ## Example Data
 
 The application comes with example CSV files that you can use to test its functionality:
-- customers.csv
-- products.csv
-- orders.csv
-- order_details.csv
+- [customers.csv](https://github.com/punnerud/csv_sql_graph/raw/main/customers.csv)
+- [products.csv](https://github.com/punnerud/csv_sql_graph/raw/main/products.csv)
+- [orders.csv](https://github.com/punnerud/csv_sql_graph/raw/main/orders.csv)
+- [order_details.csv](https://github.com/punnerud/csv_sql_graph/raw/main/order_details.csv)
 
 You can download these files from the main page and upload them to explore the features.
 
@@ -91,4 +91,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is open source and available under the [MIT License](LICENSE).
+This project is open source and available under the [MIT License](https://github.com/punnerud/csv_sql_graph/blob/main/LICENSE).

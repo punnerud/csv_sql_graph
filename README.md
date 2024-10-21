@@ -1,6 +1,6 @@
 # CSV SQL Graph
 
-https://github.com/punnerud/csv_sql_graph/blob/main/video.mp4
+![CSV SQL Graph Demo](video.gif)
 
 CSV SQL Graph is a web application that allows users to upload CSV files, convert them into SQLite tables, visualize table relationships, and perform SQL queries. It provides an intuitive interface for data analysis and exploration.
 
